@@ -20,7 +20,7 @@ function App() {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [incomingCall, setIncomingCall] = useState<any>(null);
-
+  
   // Chat History mapped by User ID
   const [chatHistory, setChatHistory] = useState<{ [key: string]: Message[] }>({});
   const [chatInput, setChatInput] = useState("");
@@ -74,46 +74,15 @@ function App() {
   }, [loggedIn]);
 
   const createPeer = (targetId: string) => {
-  const pc = new RTCPeerConnection({
-    iceServers: [
-      { urls: "stun:stun.l.google.com:19302" },
-      {
-        urls: "turn:openrelay.metered.ca:80",
-        username: "openrelayproject",
-        credential: "openrelayproject"
-      }
-    ]
-  });
-
-  localStreamRef.current?.getTracks().forEach(track =>
-    pc.addTrack(track, localStreamRef.current!)
-  );
-
-  pc.ontrack = (e) => {
-    console.log("REMOTE TRACK RECEIVED:", e.streams);
-    if (remoteVideo.current) {
-      remoteVideo.current.srcObject = e.streams[0];
-    }
+    const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+    localStreamRef.current?.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current!));
+    pc.ontrack = (e) => { if (remoteVideo.current) remoteVideo.current.srcObject = e.streams[0]; };
+    pc.onicecandidate = (e) => {
+      if (e.candidate) socket.emit("ice-candidate", { to: targetId, candidate: e.candidate });
+    };
+    peerRef.current = pc;
+    return pc;
   };
-
-  pc.oniceconnectionstatechange = () => {
-    console.log("ICE STATE:", pc.iceConnectionState);
-  };
-
-  pc.onconnectionstatechange = () => {
-    console.log("CONNECTION STATE:", pc.connectionState);
-  };
-
-  pc.onicecandidate = (e) => {
-    if (e.candidate) {
-      console.log("Sending ICE candidate");
-      socket.emit("ice-candidate", { to: targetId, candidate: e.candidate });
-    }
-  };
-
-  peerRef.current = pc;
-  return pc;
-};
 
   const callUser = async () => {
     if (!selectedUser) return;
