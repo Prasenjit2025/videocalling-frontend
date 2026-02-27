@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 
-const socket: Socket = io("http://127.0.0.1:5000", { transports: ["websocket"] });
+const socket: Socket = io("https://videocalling-backend-production.up.railway.app/", { transports: ["websocket"] });
 
 interface User { id: string; username: string; busy: boolean; }
 interface Message { sender: string; text: string; time: string; }
