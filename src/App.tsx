@@ -74,24 +74,46 @@ function App() {
   }, [loggedIn]);
 
   const createPeer = (targetId: string) => {
-    const pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        {
-          urls: "turn:openrelay.metered.ca:80",
-          username: "openrelayproject",
-          credential: "openrelayproject"
-        }
-      ]
-    });
-    localStreamRef.current?.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current!));
-    pc.ontrack = (e) => { if (remoteVideo.current) remoteVideo.current.srcObject = e.streams[0]; };
-    pc.onicecandidate = (e) => {
-      if (e.candidate) socket.emit("ice-candidate", { to: targetId, candidate: e.candidate });
-    };
-    peerRef.current = pc;
-    return pc;
+  const pc = new RTCPeerConnection({
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      {
+        urls: "turn:openrelay.metered.ca:80",
+        username: "openrelayproject",
+        credential: "openrelayproject"
+      }
+    ]
+  });
+
+  localStreamRef.current?.getTracks().forEach(track =>
+    pc.addTrack(track, localStreamRef.current!)
+  );
+
+  pc.ontrack = (e) => {
+    console.log("REMOTE TRACK RECEIVED:", e.streams);
+    if (remoteVideo.current) {
+      remoteVideo.current.srcObject = e.streams[0];
+    }
   };
+
+  pc.oniceconnectionstatechange = () => {
+    console.log("ICE STATE:", pc.iceConnectionState);
+  };
+
+  pc.onconnectionstatechange = () => {
+    console.log("CONNECTION STATE:", pc.connectionState);
+  };
+
+  pc.onicecandidate = (e) => {
+    if (e.candidate) {
+      console.log("Sending ICE candidate");
+      socket.emit("ice-candidate", { to: targetId, candidate: e.candidate });
+    }
+  };
+
+  peerRef.current = pc;
+  return pc;
+};
 
   const callUser = async () => {
     if (!selectedUser) return;
